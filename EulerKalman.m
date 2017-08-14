@@ -5,8 +5,8 @@ function result = EulerKalman(gy,q,dt)
     
     if isempty(firstRun)
        H = eye(4);
-       Q = 0.0001*eye(4);
-       R = 10*eye(4);
+       Q = 1*eye(4);
+       R = 1*eye(4);
        x = [1; 0; 0; 0];
        P = 1*eye(4);
        

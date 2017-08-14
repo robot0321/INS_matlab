@@ -44,16 +44,32 @@ Cgg = angle2dcm(angG(:,3), angG(:,2), angG(:,1));
 
 qt = zeros(4,N);
 for i=1:N
-   qt(:,i)=EulerKalman(angG(i,:), qa(:,i), 0.1);
+   qt(:,i)=EulerKalman([gx(i), gy(i), gz(i)], qa(:,i), 0.1);
 end
 Ck = quat2dcm(qt');
 [Ky, Kp, Kr] = quat2angle(qt');
 
 figure()
+title('roll');
 hold on;
-plot(t(1:490), qa(1:490))
-plot(t(1:490), qG(1:490))
-plot(t(1:490), qt(1:490))
+plot(t(1:490), angA(1:490,2));
+plot(t(1:490), angG(1:490,1));
+plot(t(1:490), Kr(1:490));
+
+figure()
+title('pitch');
+hold on;
+plot(t(1:490), angA(1:490,1));
+plot(t(1:490), angG(1:490,2));
+plot(t(1:490), Kp(1:490));
+
+figure()
+title('yaw');
+hold on;
+plot(t(1:490), zeros(490,1));
+plot(t(1:490), angG(1:490,3));
+plot(t(1:490), Ky(1:490));
+
 
 
 %%
