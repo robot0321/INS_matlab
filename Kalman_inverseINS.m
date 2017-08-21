@@ -72,7 +72,7 @@ wb = [1, 1, 1]'*1;
 omega = [0, -wb(3), wb(2); wb(3), 0, -wb(1); -wb(2), wb(1), 0];
 for i=1:size(P1,2)-1
     C_n_b(:,:,i+1) = C_n_b(:,:,i)*(eye(3) + omega*dt);
-    C_n_b(:,:,i+1)= DCM_ortho_normal_compensation(C_n_b(:,:,i+1));%DCM orthogonalization, normalization
+    C_n_b(:,:,i+1) = DCM_ortho_normal_compensation(C_n_b(:,:,i+1));%DCM orthogonalization, normalization
 end
 r_mag = R_surface(Earth_R_long, Earth_R_short, P1(1,:));%*(1+tan(wr)^2);
 
@@ -131,7 +131,11 @@ for i=1:size(P1,2)
    f_b(:,i) = C_n_b(:,:,i)'*f_n(:,i);
 end
 
-save body_data.mat f_b w_b_ib init_P init_C_n_b init_V_n;
+true_V = V_n;
+true_P = P1;
+true_C_n_b = C_n_b;
+
+save body_data.mat f_b w_b_ib init_P init_C_n_b init_V_n true_P true_V true_C_n_b;
 
 figure(1);
 subplot(3,1,1);

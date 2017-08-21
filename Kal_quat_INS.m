@@ -1,8 +1,8 @@
-inverseINS;
+quat_inverseINS;
 clc;
 clear;
 
-load body_data.mat; % load f_b, w_b_ib, init_P, init_C_n_b, init_V_n
+load Qbody_data.mat; % load f_b, w_b_ib, init_P, init_q, init_V_n
 
 dt = 0.01; %100Hz
 Earth_Omega = 7.292115e-5;
@@ -15,8 +15,11 @@ GM = 398600.4418*1000^3;
 
 % 초기값
 P = init_P'; % 위도(L), 경도(l), 중심으로부터 거리(r)
-C_n_b = init_C_n_b;
+q = init_q;
+qC = quat2DCM(q(:,1));
 V_n = init_V_n;
+
+
 
 % INS
 
@@ -28,18 +31,23 @@ for i=1:size(f_b,2)
     w_n_en(:,i) = [delta_l*cos(P(1,i)); -delta_L; -delta_l*sin(P(1,i))];
     w_n_ie(:,i) = [Earth_Omega*cos(P(1,i)); 0; -Earth_Omega*sin(P(1,i))];
     w_n_in(:,i) = w_n_ie(:,i) + w_n_en(:,i);
-    w_b_in(:,i) = C_n_b(:,:,i)' * w_n_in(:,i);
+    w_b_in(:,i) = qC(:,:,i)' * w_n_in(:,i);
     w_b_nb(:,i) = w_b_ib(:,i) - w_b_in(:,i);
     
-    Omega_b_nb(:,:,i) = angularV2M(w_b_nb(:,i));%[0, -w_b_nb(3), w_b_nb(2); w_b_nb(3), 0, -w_b_nb(1); -w_b_nb(2), w_b_nb(1), 0];
-    delta_C_n_b(:,:,i) = C_n_b(:,:,i)*Omega_b_nb(:,:,i);
+    [x, P] = Kal_AttVelPos(x, P, Q, R, z, C_n_b(:,:,i), f_b_ib(:,i), w_n_ie(:,i), w_n_en(:,i), P(:,1), P(:,3), dt, [0,0,0]');
+%     Omega_b_nb(:,:,i) = angularV2M(w_b_nb(:,i));%[0, -w_b_nb(3), w_b_nb(2); w_b_nb(3), 0, -w_b_nb(1); -w_b_nb(2), w_b_nb(1), 0];
+%     delta_qC(:,:,i) = qC(:,:,i)*Omega_b_nb(:,:,i);
 %     Omega_b_ib = angularV2M(w_b_ib(:,i));
 %     Omega_n_in = angularV2M(w_n_in);
-%     delta_C_n_b(:,:,i) = C_n_b(:,:,i)*Omega_b_ib - Omega_n_in*C_n_b(:,:,i);
-    C_n_b(:,:,i+1) = C_n_b(:,:,i) + delta_C_n_b(:,:,i)*dt;
-    C_n_b(:,:,i+1) = DCM_ortho_normal_compensation(C_n_b(:,:,i+1));
- 
-    f_n(:,i) = C_n_b(:,:,i) * f_b(:,i);
+%     delta_qC(:,:,i) = qC(:,:,i)*Omega_b_ib - Omega_n_in*qC(:,:,i);
+%     qC(:,:,i+1) = qC(:,:,i) + delta_qC(:,:,i)*dt;
+%     qC(:,:,i+1) = DCM_ortho_normal_compensation(qC(:,:,i+1));
+
+    q(:,i+1) = quat_update(q(:,i),w_b_nb(:,i),dt);
+    q(:,i+1) = q(:,i+1)/norm(q(:,i+1)); %normalization
+    qC(:,:,i+1) = quat2DCM(q(:,i+1)); %DCM
+    
+    f_n(:,i) = qC(:,:,i) * f_b(:,i);
     
     %r_mag(i) = R_surface(Earth_R_long, Earth_R_short, P(1,i));%sqrt((1+tan(P(1,i))^2)./(Earth_R_short^2 + (Earth_R_long^2)*tan(P(1,i))^2))*Earth_R_short*Earth_R_long;
     %r = r_mag(i)*[cos(P(1,i))*cos(P(2,i)); cos(P(1,i))*sin(P(2,i)); sin(P(1,i))];
@@ -73,4 +81,6 @@ plot3(P(3,1:end-1).*cos(P(1,1:end-1)).*cos(P(2,1:end-1)), P(3,1:end-1).*cos(P(1,
 figure(3);
 hold on;
 plot(P(1,1:end-1)*180/pi,P(2,1:end-1)*180/pi);
-
+% 
+% figure();
+% attitude_visualize(qC,qC);
