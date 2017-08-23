@@ -1,7 +1,6 @@
 function [x_k1, P_k1] = Kal_AttVelPos(x, PP, Q, R, z, C_n_b, f_b_ib, w_n_ie, w_n_en, v_n_eb, Lb, hb, dt, l_b_ba)
     % x = [att3; vel3; pos3; acc_bias; gyro_bias];
     % NED frame means, v(1) = v_N, v(2) = v_E, v(3) = v_D;
-    persistent RE RN r_e_eS F11 F12 F13 
     
     Earth_Omega = 7.292115e-5;
     Earth_R_long = 6378137.0;
@@ -44,8 +43,8 @@ function [x_k1, P_k1] = Kal_AttVelPos(x, PP, Q, R, z, C_n_b, f_b_ib, w_n_ie, w_n
     Sp = [SLy, 0, 0;
           0, SLy, 0;
           0, 0, 1];
-    H = [zr3, zr3, -Sp, zr3, zr3;
-         zr3, -eye(3), zr3, zr3, zr3];
+    %H = [zr3, eye(3), zr3, zr3, zr3]; % for ZUPT
+    H = [zr3, zr3,eye(3), zr3, zr3]; % for CUPT
      
     xp = A*x;
     Pp = A*PP*A' + Q;

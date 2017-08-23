@@ -48,10 +48,10 @@ hold off;
 axis([0,85,-20,300]);
 legend('ground', 'phase0', 'phase1', 'phase2','Location','northwest');
 text(MR(rocket_start,1)/1000, MR(rocket_start,11) - alt_avg,'launch', 'horizontalAlignment', 'center', 'verticalAlignment', 'top');
-text(MR(alt_max_idx,1)/1000, MR(alt_max_idx,11) - alt_avg,strcat('peak(',num2str(MR(alt_max_idx,11)),'m)'), 'horizontalAlignment', 'center', 'verticalAlignment', 'bottom');
+text(MR(alt_max_idx,1)/1000, MR(alt_max_idx,11) - alt_avg,strcat('peak(',num2str(MR(alt_max_idx,11)- alt_avg),'m)'), 'horizontalAlignment', 'center', 'verticalAlignment', 'bottom');
 
-text(MR(phase01,1)/1000, MR(phase01,11) - alt_avg,strcat('drogue(',num2str(MR(phase01,11)),'m)'), 'horizontalAlignment', 'left', 'verticalAlignment', 'middle');
-text(MR(phase12,1)/1000, MR(phase12,11) - alt_avg,strcat('main(',num2str(MR(phase12,11)),'m)'), 'horizontalAlignment', 'left', 'verticalAlignment', 'middle');
+text(MR(phase01,1)/1000, MR(phase01,11) - alt_avg,strcat('drogue(',num2str(MR(phase01,11)- alt_avg),'m, ', num2str(MR(phase01,11)-MR(alt_max_idx,11)),'m from peak)'), 'horizontalAlignment', 'left', 'verticalAlignment', 'middle');
+text(MR(phase12,1)/1000, MR(phase12,11) - alt_avg,strcat('main(',num2str(MR(phase12,11)- alt_avg),'m, ', num2str(MR(phase12,11)-MR(alt_max_idx,11)),'m from peak)'), 'horizontalAlignment', 'left', 'verticalAlignment', 'middle');
 
 N=1;
 MR_avgN = zeros(size(MR,1)-N,1);

@@ -1,4 +1,4 @@
-inverseINS;
+%inverseINS;
 clc;
 clear all;
 
@@ -28,11 +28,11 @@ Q = 0.01*eye(15,15);
 Q(7:9,7:9) = zeros(3);
 % Q(10:12,10:12) = eye(3);
 % Q(13:15,13:15) = eye(3);
-R = 10*eye(6);
+R = 10*eye(3);
 
 % INS
 
-for i=1:size(f_b,2)
+for i=1:size(f_b,2)-1
     if i==85
         pause(3);
     end
@@ -74,18 +74,21 @@ for i=1:size(f_b,2)
     
     %************** Measurement
     noiseP = zeros(3,1);%3*randn(3,1);
-    noiseV = zeros(3,1);%0.4*randn(3,1);
-    true_z = [true_P(:,i+1)-[0,0,Earth_R_long]'+noiseP; true_V(:,i+1)+noiseV];
-    propa_z = [P(:,i+1)-[0,0,Earth_R_long]'+noiseP; V_n(:,i+1)+noiseV];
+    noiseV = 0.004*randn(3,1);
+%     true_z = true_V(:,i+1); 
+%     propa_z = V_n(:,i+1); 
+    true_z = true_P(:,i+1)-[0,0,Earth_R_long]'+noiseP;
+    propa_z = P(:,i+1)-[0,0,Earth_R_long]'+noiseP; 
+    
     err_z = propa_z - true_z;
     %************** Kalman    
-    [err_x, Pv] = Kal_AttVelPos(err_x, Pv, Q, R, err_z, C_n_b(:,:,i), f_b(:,i), w_n_ie(:,i), w_n_en(:,i), v_n_eb, P(1,i), P(3,i)-Earth_R_long, dt, [0,0,0]');
+    [err_x(:,i+1), Pv] = Kal_AttVelPos(err_x(:,i), Pv, Q, R, err_z, C_n_b(:,:,i), f_b(:,i), w_n_ie(:,i), w_n_en(:,i), v_n_eb, P(1,i), P(3,i)-Earth_R_long, dt, [0,0,0]');
     
     %************** Kalman solution corretion
-    C_n_b(:,:,i+1) = (eye(3) - angularV2M(err_x(1:3)))*C_n_b(:,:,i+1);
-    C_n_b(:,:,i+1) = DCM_ortho_normal_compensation(C_n_b(:,:,i+1));
-    V_n(:,i+1) = V_n(:,i+1) - err_x(4:6); % 원래는 v_n_eb = v_n_eb - x(4:6)';이고 V_n계산에서도 v_n_ie가 P가 바뀜에 따라 바뀌어서 바꿔줘야 되지만 근사.
-    P(:,i+1) = P(:,i+1) - err_x(7:9);
+    C_n_b(:,:,i+1) = (eye(3) - angularV2M(err_x(1:3,i+1)))*C_n_b(:,:,i+1);
+    %C_n_b(:,:,i+1) = DCM_ortho_normal_compensation(C_n_b(:,:,i+1));
+    V_n(:,i+1) = V_n(:,i+1) - err_x(4:6,i+1); % 원래는 v_n_eb = v_n_eb - x(4:6)';이고 V_n계산에서도 v_n_ie가 P가 바뀜에 따라 바뀌어서 바꿔줘야 되지만 근사.
+%     P(:,i+1) = P(:,i+1) - err_x(7:9,i+1);
 end
 
 
