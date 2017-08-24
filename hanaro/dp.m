@@ -83,17 +83,17 @@ figure(3);
 plot(MR(1:end-M-N-2,1)/1000, apx_acc/9.8);
 
 %% attitude
-ax = MR(:,2); ay = MR(:,3); az = MR(:,4);
-gx = MR(:,5); gy = MR(:,6); gz = MR(:,7);
+ay = MR(:,2); az = MR(:,3); ax = MR(:,4);
+gy = MR(:,5)*pi/180; gz = MR(:,6)*pi/180; gx = MR(:,7)*pi/180;
 mx = MR(:,8); my = MR(:,9); mz = MR(:,10);
 
-f_b = MR(:,2:4)';
-w_b_ib = [gx'-mean(gx(1:490)); gy'-mean(gy(1:490)); gz'-mean(gz(1:490))];
-mag = MR(:,8:10);
+f_b = MR(491:581,2:4)';
+w_b_ib = [gx(491:581)'-mean(gx(1:490)); gy(491:581)'-mean(gy(1:490)); gz(491:581)'-mean(gz(1:490))];
+%mag = MR(:,8:10);
 
 % load f_b, w_b_ib, init_P, init_C_n_b, init_V_n
 
-dt = 0.1; %100Hz
+dt = 0.1; %10Hz
 Earth_Omega = 7.292115e-5;
 Earth_R_short = 6356752.3142;
 Earth_R_long = 6378137.0;
@@ -101,10 +101,10 @@ Earth_R_long = 6378137.0;
 
 % 초기값
 P = [34.608270*pi/180, 127.204635*pi/180, R_surface(Earth_R_long, Earth_R_short, 34.608270*pi/180)]'; % 위도(L), 경도(l), 중심으로부터 거리(r)
-avgf = [mean(f_b(1,1:490)),mean(f_b(2,1:490)),mean(f_b(3,1:490))];
-init_rpy = acc2att(avgf);
+avgf = [mean(MR(1:490,4)),mean(MR(1:490,2)),mean(MR(1:490,3))];
+init_rp = acc2rp(avgf);
 
-qC = angle2dcm(init_rpy(1), init_rpy(2), init_rpy(3));
+qC = angle2dcm(init_rp(1), init_rp(2), 0,'XYZ');
 q = dcm2quat(qC)';
 V_n = [0, 0, 0]';
 
