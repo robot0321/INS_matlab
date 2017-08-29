@@ -10,16 +10,16 @@ load Qbody_data.mat; % load f_b, w_b_ib, init_P, init_q, init_V_n
 % % specification: MPU9250
 % f_b = f_b + 0.08*randn(size(f_b)) + 0.01; % noise + bias
 % w_b_ib = w_b_ib + 0.1*pi/180*randn(size(w_b_ib)) + 0.001; % noise + bias
-% 
-% % specification: HG1700
-% f_b = f_b + 0.08*randn(size(f_b)) + 0.01; % noise + bias
-% w_b_ib = w_b_ib + 0.1*pi/180*randn(size(w_b_ib)) + 0.001; % noise + bias
-% 
-% %add noise 
+
+% specification: HG1700
+% f_b = f_b + 0.001*randn(size(f_b));  % noise + bias
+% w_b_ib = w_b_ib + 0.001*randn(size(w_b_ib)); % noise + bias
+
+% %add noise w_b
 
 
 
-dt = 0.005; %100Hz
+dt = 0.01; %100Hz
 Earth_Omega = 7.292115e-5;
 Earth_R_short = 6356752.3142;
 Earth_R_long = 6378137.0;
@@ -27,7 +27,7 @@ GM = 398600.4418*1000^3;
 [ex, ey, ez] = ellipsoid(0,0,0,Earth_R_long,Earth_R_long,Earth_R_short,20);
 e = 0.0818191908425;
     
-x_k = 0*ones(15,1);
+x_k = 0.1*ones(15,1);
 P_k = 100*eye(15,15);
 
 
@@ -137,7 +137,7 @@ for i=1:size(f_b,2)-1
     Q(10:12,10:12) = eye(3)*1e-2;
     Q(13:15,13:15) = eye(3)*1e-3;
     
-    R = 500000000000*eye(3,3); %선정 어뜨케 하지
+    R = 100*eye(3);%diag([3/Earth_R_long, 3/Earth_R_long, 20]); %선정 어뜨케 하지 크게(10000000000*eye(3)) 잡으면 잘된다?
     
 %     %ZUPT
 %     H = [zr3, -eye(3), zr3, zr3, zr3]; % 
@@ -148,8 +148,8 @@ for i=1:size(f_b,2)-1
 %     z = -(P(:,i+1) - init_P');    
     
     %GPS
-    GPS_sd = [3/Earth_R_long, 3/Earth_R_long, 20/Earth_R_long]'; %3m, 3m, 20m 오차
-    GPS_P = inv_P(:,i+1) + GPS_sd.*randn(3,1);
+    GPS_sd = [3/Earth_R_long, 3/Earth_R_long, 20]'/5; %3m, 3m, 20m 오차
+    GPS_P = inv_P(:,i+1);% + GPS_sd.*randn(3,1);
     H = [zr3, zr3, -eye(3), zr3, zr3]; % 
     z = -(P(:,i+1) - GPS_P);
     GG(:,i) = GPS_P;
