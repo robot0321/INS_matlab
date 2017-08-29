@@ -14,28 +14,28 @@ GM = 398600.4418*1000^3;
 
 
 %정지 (동체 회전)
-init_P = [36.0*pi/180, 127.0*pi/180, Earth_R_long];
-init_C_n_b = [1, 0, 0; 0, 1, 0; 0, 0, 1];
-init_q = [1;0;0;0];
-Ns = 20000;
-P1 = init_P(1)*ones(1,Ns);
-P1(2,:) = init_P(2)*ones(1,Ns);
-P1(3,:) = init_P(3)*ones(1,Ns);
-C_n_b(:,:,1) = init_C_n_b;
-qC(:,:,1) = init_C_n_b;
-q(:,1)=init_q;
-w_b_nb = [0, 0, 10]'*ones(1,size(P1,2));
-%omega = [0, -w_nb(3), w_nb(2); w_nb(3), 0, -w_nb(1); -w_nb(2), w_nb(1), 0];
-for i=1:size(P1,2)-1
-    %C_n_b(:,:,i+1) = C_n_b(:,:,i)*(eye(3) + omega*dt);
-    %C_n_b(:,:,i+1)= DCM_ortho_normal_compensation(C_n_b(:,:,i+1));%DCM orthogonalization, normalization
-     q(:,i+1) = quat_update(q(:,i),w_b_nb(:,i),dt);
-     q(:,i+1) = q(:,i+1)/norm(q(:,i+1)); %normalization
-     qC(:,:,i+1) = quat2DCM(q(:,i+1)); %DCM
-    %qC(:,:,i+1) = init_C_n_b;
-end
-
-r_mag = R_surface(Earth_R_long, Earth_R_short, P1(1,:));%*(1+tan(wr)^2);
+% init_P = [36.0*pi/180, 127.0*pi/180, Earth_R_long];
+% init_C_n_b = [1, 0, 0; 0, 1, 0; 0, 0, 1];
+% init_q = [1;0;0;0];
+% Ns = 10000;
+% P1 = init_P(1)*ones(1,Ns);
+% P1(2,:) = init_P(2)*ones(1,Ns);
+% P1(3,:) = init_P(3)*ones(1,Ns);
+% C_n_b(:,:,1) = init_C_n_b;
+% qC(:,:,1) = init_C_n_b;
+% q(:,1)=init_q;
+% w_b_nb = [0, 0, 10]'*ones(1,size(P1,2));
+% %omega = [0, -w_nb(3), w_nb(2); w_nb(3), 0, -w_nb(1); -w_nb(2), w_nb(1), 0];
+% for i=1:size(P1,2)-1
+%     %C_n_b(:,:,i+1) = C_n_b(:,:,i)*(eye(3) + omega*dt);
+%     %C_n_b(:,:,i+1)= DCM_ortho_normal_compensation(C_n_b(:,:,i+1));%DCM orthogonalization, normalization
+%      q(:,i+1) = quat_update(q(:,i),w_b_nb(:,i),dt);
+%      q(:,i+1) = q(:,i+1)/norm(q(:,i+1)); %normalization
+%      qC(:,:,i+1) = quat2DCM(q(:,i+1)); %DCM
+%     %qC(:,:,i+1) = init_C_n_b;
+% end
+% 
+% r_mag = R_surface(Earth_R_long, Earth_R_short, P1(1,:));%*(1+tan(wr)^2);
 
 
 % %직진 (동체 회전)
