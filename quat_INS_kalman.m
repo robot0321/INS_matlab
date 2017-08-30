@@ -27,14 +27,14 @@ GM = 398600.4418*1000^3;
 [ex, ey, ez] = ellipsoid(0,0,0,Earth_R_long,Earth_R_long,Earth_R_short,20);
 e = 0.0818191908425;
     
-x_k = 0.1*ones(15,1);
+x_k = 0*ones(15,1);
 P_k = 100*eye(15,15);
 
 
 %% 역 연산
 
 % 초기값
-P = init_P'; % 위도(L), 경도(l), 중심으로부터 거리(r)
+P = init_P'-[0;0;Earth_R_long]; % 위도(L), 경도(l), 중심으로부터 거리(r)
 
 q = init_q;
 qC = quat2DCM(q(:,1));
@@ -48,10 +48,14 @@ v_n_eb(:,1) = init_V_n;% - Earth_Omega*norm(R_vector)*cos(P(1,1));
 % INS
 
 for i=1:size(f_b,2)-1
-    RE(i) = Earth_R_long/sqrt(1-(e*sin(P(1,i)))^2);
+    Lb = P(1,i);
+    hb = P(3,i);
+    RE(i) = Earth_R_long/sqrt(1-(e*sin(Lb))^2);
+    RN(i) = Earth_R_long*(1-e^2)/(1-(e*sin(Lb))^2)^(3/2);
+
     
-    delta_L = V_n(1,i)/(P(3,i));
-    delta_l = V_n(2,i)/(P(3,i))/cos(P(1,i));
+    delta_L = V_n(1,i)/(P(3,i)+Earth_R_long);
+    delta_l = V_n(2,i)/(P(3,i)+Earth_R_long)/cos(P(1,i));
     delta_h = -V_n(3,i);
 
     w_n_en(:,i) = [delta_l*cos(P(1,i)); -delta_L; -delta_l*sin(P(1,i))];
@@ -76,31 +80,30 @@ for i=1:size(f_b,2)-1
     
     %r_mag(i) = R_surface(Earth_R_long, Earth_R_short, P(1,i));%sqrt((1+tan(P(1,i))^2)./(Earth_R_short^2 + (Earth_R_long^2)*tan(P(1,i))^2))*Earth_R_short*Earth_R_long;
     %r = r_mag(i)*[cos(P(1,i))*cos(P(2,i)); cos(P(1,i))*sin(P(2,i)); sin(P(1,i))];
-    r = [P(3,i)*cos(P(1,i))*cos(P(2,i)), P(3,i)*cos(P(1,i))*sin(P(2,i)), P(3,i)*sin(P(1,i))]';
+    r = [(P(3,i)+Earth_R_long)*cos(P(1,i))*cos(P(2,i)), (P(3,i)+Earth_R_long)*cos(P(1,i))*sin(P(2,i)), (P(3,i)+Earth_R_long)*sin(P(1,i))]';
     %g0 = 9.7803253359*(1+0.001931853*sin(P(1,i))^2)/sqrt(1-(e*sin(P(1,i)))^2);
     g0 = 9.780318 * (1 + 5.3024e-3 .* sin(P(1,i)).*sin(P(1,i)) - 5.9e-6 .* sin(2*P(1,i)) .* sin(2*P(1,i)));
     r_e_eS = RE(i)*sqrt(1-e*(2-e)*sin(P(1,i))^2);
-    g = g0/(1+(P(3,i)-Earth_R_long)/Earth_R_long);
+    g = g0/(1+(P(3,i))/Earth_R_long);
     g_n_l(:,i) = [zeros(size(g)); zeros(size(g)); g] - cross(w_n_ie(:,i), cross(w_n_ie(:,i), r));
     
 
     delta_V_n = f_n(:,i) - cross(2*w_n_ie(:,i) + w_n_en(:,i), V_n(:,i)) + g_n_l(:,i);
     V_n(:,i+1) = V_n(:,i) + delta_V_n*dt;
-    P(:,i+1) = P(:,i) + [delta_L; delta_l; delta_h]*dt;
-    sL(i) = delta_L; sl(i) = delta_l; sh(i) = delta_h;
+    %P(:,i+1) = P(:,i) + [delta_L; delta_l; delta_h]*dt;
+    P(3,i+1) = P(3,i) - (V_n(3,i) + V_n(3,i+1))*dt/2;
+    P(1,i+1) = P(1,i) + (V_n(1,i)/(RN(i)+hb) + V_n(1,i+1)/(RN(i) + P(3,i+1)))*dt/2;
+    RE(i+1) = Earth_R_long/sqrt(1-(e*sin(P(1,i+1)))^2);
+    P(2,i+1) = P(2,i) + (V_n(2,i)/(RE(i)+hb)/cos(Lb) + V_n(2,i+1)/(RE(i+1)+P(3,i+1))/cos(P(1,i+1)))*dt/2;  
+    %sL(i) = delta_L; sl(i) = delta_l; sh(i) = delta_h;
     
     
-    
+    %% Kalman
     %추가
-    Lb = P(1,i);
-    hb = P(3,i);
-    RE(i) = Earth_R_long/sqrt(1-(e*sin(Lb))^2);
-    RN(i) = Earth_R_long*(1-e^2)/(1-(e*sin(Lb))^2)^(3/2);
     v_n_eb(:,i) = V_n(:,i);
     v_n_eb(:,i+1) = V_n(:,i+1);
     C_n_b(:,:,i+1) = qC(:,:,i+1);
     
-    % Kalman
     % x = (d_att3, d_vel3, d_pos3, ba3, bg3)
     F11 = -angularV2M(w_n_ie(:,i) + w_n_en(:,i));
     F12 = [0, -1/(RE(i) + hb), 0;
@@ -124,8 +127,8 @@ for i=1:size(f_b,2)-1
            0, 0, 0];
     
     zr3 = zeros(3,3);
-    F = [F11, F12, F13, zr3, C_n_b(:,:,i+1);
-         F21, F22, F23, C_n_b(:,:,i+1), zr3;
+    F = [F11, F12, F13, zr3, C_n_b(:,:,i);
+         F21, F22, F23, C_n_b(:,:,i), zr3;
          zr3, F32, F33, zr3, zr3;
          zr3, zr3, zr3, zr3, zr3;
          zr3, zr3, zr3, zr3, zr3];
@@ -175,6 +178,8 @@ for i=1:size(f_b,2)-1
     
     sx_k(:,i) = x_k;
 end
+
+P(3,:) = P(3,:) + Earth_R_long;
 
 figure(1);
 subplot(3,1,1);
