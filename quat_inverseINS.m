@@ -14,7 +14,7 @@ GM = 398600.4418*1000^3;
 
 
 %정지 (동체 회전)
-init_P = [36.0*pi/180, 127.0*pi/180, Earth_R_long];
+init_P = [36.0*pi/180, 127.0*pi/180, R_surface(Earth_R_long, Earth_R_short, 36*pi/180)];
 init_C_n_b = [1, 0, 0; 0, 1, 0; 0, 0, 1];
 init_q = [1;0;0;0];
 Ns = 20000;
