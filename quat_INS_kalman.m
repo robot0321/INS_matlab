@@ -7,9 +7,9 @@ load Qbody_data.mat; % load f_b, w_b_ib, init_P, init_q, init_V_n
 
 % % add noise
 % 
-% specification: MPU9250
-f_b = f_b + 0.08*randn(size(f_b)) + 0.01; % noise + bias
-w_b_ib = w_b_ib + 0.1*pi/180*randn(size(w_b_ib)) + 0.001; % noise + bias
+% % specification: MPU9250
+% f_b = f_b + 0.08*randn(size(f_b)) + 0.01; % noise + bias
+% w_b_ib = w_b_ib + 0.001*pi/180*randn(size(w_b_ib)) + 0.001; % noise + bias
 
 % specification: HG1700
 % f_b = f_b + 0.001*randn(size(f_b));  % noise + bias
@@ -28,13 +28,13 @@ GM = 398600.4418*1000^3;
 e = 0.0818191908425;
     
 x_k = 0*ones(15,1);
-P_k = 100*eye(15,15);
+P_k = diag([0.01, 0.01, 0.01, 1, 1, 1, 10, 10, 10, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]*100);%*eye(15,15);
 
 
 %% 역 연산
 
 % 초기값
-P = init_P' - [0,0,R_surface(Earth_R_long, Earth_R_short, init_P(1,1))]'; % 위도(L), 경도(l), 고도(h)
+P = init_P'; % 위도(L), 경도(l), 고도(h)
 
 q = init_q;
 qC = quat2DCM(q(:,1));
@@ -66,7 +66,7 @@ for i=1:size(f_b,2)-1
     
     %Omega_b_nb(:,:,i) = angularV2M(w_b_nb(:,i));%[0, -w_b_nb(3), w_b_nb(2); w_b_nb(3), 0, -w_b_nb(1); -w_b_nb(2), w_b_nb(1), 0];
     %delta_qC(:,:,i) = qC(:,:,i)*Omega_b_nb(:,:,i);
-%     Omega_b_ib = angularV2M(w_b_ib(:,i));
+%     Omega_b_ib = angularV2M(w_b_ib(:,i));f
 %     Omega_n_in = angularV2M(w_n_in);
 %     delta_qC(:,:,i) = qC(:,:,i)*Omega_b_ib - Omega_n_in*qC(:,:,i);
     %qC(:,:,i+1) = qC(:,:,i) + delta_qC(:,:,i)*dt;
@@ -74,6 +74,8 @@ for i=1:size(f_b,2)-1
     q(:,i+1) = quat_update(q(:,i),w_b_nb(:,i),dt);
     q(:,i+1) = q(:,i+1)/norm(q(:,i+1)); %normalization
     qC(:,:,i+1) = quat2DCM(q(:,i+1)); %DCM
+    
+    
     
     f_n(:,i) = qC(:,:,i) * f_b(:,i);
     
@@ -95,88 +97,90 @@ for i=1:size(f_b,2)-1
     
     
     
-    %추가
-    v_n_eb(:,i) = V_n(:,i);
-    v_n_eb(:,i+1) = V_n(:,i+1);
-    C_n_b(:,:,i+1) = qC(:,:,i+1);
-    
-    % Kalman
-    % x = (d_att3, d_vel3, d_pos3, ba3, bg3)
-    F11 = -angularV2M(w_n_ie(:,i) + w_n_en(:,i));
-    F12 = [0, -1/(RE(i) + hb), 0;
-           1/(RN(i) + hb), 0, 0;
-           0, tan(Lb)/(RE(i)+hb), 0];
-    F13 = [Earth_Omega*sin(Lb), 0, v_n_eb(2,i)/(RE(i)+hb)^2;
-           0, 0, -v_n_eb(1,i)/(RN(i)+hb)^2;
-           Earth_Omega*cos(Lb)+v_n_eb(2,i)/(RE(i)+hb)/(cos(Lb))^2, 0, -v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)^2];
-    F21 = -angularV2M(f_n(:,i));
-    F22 = [v_n_eb(3,i)/(RN(i)+hb), -2*v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)-2*Earth_Omega*sin(Lb), v_n_eb(1,i)/(RN(i)+hb);
-           v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)+2*Earth_Omega*sin(Lb), (v_n_eb(1,i)*tan(Lb)+v_n_eb(3,i))/(RE(i)+hb), v_n_eb(2,i)/(RE(i)+hb)+2*Earth_Omega*cos(Lb);
-           -2*v_n_eb(1,i)/(RN(i)+hb), -2*v_n_eb(2,i)/(RE(i)+hb)-2*Earth_Omega*cos(Lb), 0];
-    F23 = [-(v_n_eb(2,i)^2)*(sec(Lb)^2)/(RE(i)+hb)-2*v_n_eb(2,i)*Earth_Omega*cos(Lb), 0, v_n_eb(2,i)^2*tan(Lb)/(RE(i)+hb)^2-v_n_eb(1,i)*v_n_eb(3,i)/(RN(i)+hb)^2;
-           v_n_eb(1,i)*v_n_eb(2,i)*sec(Lb)^2/(RE(i)+hb)+2*v_n_eb(1,i)*Earth_Omega*cos(Lb)-2*v_n_eb(3,i)*Earth_Omega*sin(Lb), 0, -(v_n_eb(1,i)*v_n_eb(2,i)*tan(Lb)+v_n_eb(2,i)*v_n_eb(3,i))/(RE(i)+hb)^2;
-           2*v_n_eb(2,i)*Earth_Omega*sin(Lb), 0, v_n_eb(2,i)^2/(RE(i)+hb)^2+v_n_eb(1,i)^2/(RN(i)+hb)^2-2*g0/r_e_eS];
-    F32 = [1/(RN(i)+hb), 0, 0;
-           0, 1/((RE(i)+hb)*cos(Lb)), 0;
-           0, 0, -1];
-    F33 = [0, 0, -v_n_eb(1,i)/(RN(i)+hb)^2;
-           v_n_eb(2,i)*sin(Lb)/((RE(i)+hb)*cos(Lb)^2), 0, v_n_eb(2,i)/(RE(i)+hb)^2/cos(Lb);
-           0, 0, 0];
-    
-    zr3 = zeros(3,3);
-    F = [F11, F12, F13, zr3, C_n_b(:,:,i+1);
-         F21, F22, F23, C_n_b(:,:,i+1), zr3;
-         zr3, F32, F33, zr3, zr3;
-         zr3, zr3, zr3, zr3, zr3;
-         zr3, zr3, zr3, zr3, zr3];
-    A = eye(15) + F*dt;
-
-    Q = zeros(15,15);
-    Q(1:3,1:3) = eye(3)*1e-2;
-    Q(4:6,4:6) = eye(3)*3e-3;
-    Q(10:12,10:12) = eye(3)*1e-2;
-    Q(13:15,13:15) = eye(3)*1e-3;
-    
-    R = 1*eye(3);%diag([3/Earth_R_long, 3/Earth_R_long, 20]); %선정 어뜨케 하지 크게(10000000000*eye(3)) 잡으면 잘된다?
-    
-%     %ZUPT
-%     H = [zr3, -eye(3), zr3, zr3, zr3]; % 
-%     z = -(v_n_eb(:,i+1) - [0;0;0]);
-    
+%     %추가
+%     v_n_eb(:,i) = V_n(:,i);
+%     v_n_eb(:,i+1) = V_n(:,i+1);
+%     C_n_b(:,:,i+1) = qC(:,:,i+1);
+%     
+%     % Kalman
+%     % x = (d_att3, d_vel3, d_pos3, ba3, bg3)
+%     F11 = -angularV2M(w_n_ie(:,i) + w_n_en(:,i));
+%     F12 = [0, -1/(RE(i) + hb), 0;
+%            1/(RN(i) + hb), 0, 0;
+%            0, tan(Lb)/(RE(i)+hb), 0];
+%     F13 = [Earth_Omega*sin(Lb), 0, v_n_eb(2,i)/(RE(i)+hb)^2;
+%            0, 0, -v_n_eb(1,i)/(RN(i)+hb)^2;
+%            Earth_Omega*cos(Lb)+v_n_eb(2,i)/(RE(i)+hb)/(cos(Lb))^2, 0, -v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)^2];
+%     F21 = -angularV2M(f_n(:,i));
+%     F22 = [v_n_eb(3,i)/(RN(i)+hb), -2*v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)-2*Earth_Omega*sin(Lb), v_n_eb(1,i)/(RN(i)+hb);
+%            v_n_eb(2,i)*tan(Lb)/(RE(i)+hb)+2*Earth_Omega*sin(Lb), (v_n_eb(1,i)*tan(Lb)+v_n_eb(3,i))/(RE(i)+hb), v_n_eb(2,i)/(RE(i)+hb)+2*Earth_Omega*cos(Lb);
+%            -2*v_n_eb(1,i)/(RN(i)+hb), -2*v_n_eb(2,i)/(RE(i)+hb)-2*Earth_Omega*cos(Lb), 0];
+%     F23 = [-(v_n_eb(2,i)^2)*(sec(Lb)^2)/(RE(i)+hb)-2*v_n_eb(2,i)*Earth_Omega*cos(Lb), 0, v_n_eb(2,i)^2*tan(Lb)/(RE(i)+hb)^2-v_n_eb(1,i)*v_n_eb(3,i)/(RN(i)+hb)^2;
+%            v_n_eb(1,i)*v_n_eb(2,i)*sec(Lb)^2/(RE(i)+hb)+2*v_n_eb(1,i)*Earth_Omega*cos(Lb)-2*v_n_eb(3,i)*Earth_Omega*sin(Lb), 0, -(v_n_eb(1,i)*v_n_eb(2,i)*tan(Lb)+v_n_eb(2,i)*v_n_eb(3,i))/(RE(i)+hb)^2;
+%            2*v_n_eb(2,i)*Earth_Omega*sin(Lb), 0, v_n_eb(2,i)^2/(RE(i)+hb)^2+v_n_eb(1,i)^2/(RN(i)+hb)^2-2*g0/r_e_eS];
+%     F32 = [1/(RN(i)+hb), 0, 0;
+%            0, 1/((RE(i)+hb)*cos(Lb)), 0;
+%            0, 0, -1];
+%     F33 = [0, 0, -v_n_eb(1,i)/(RN(i)+hb)^2;
+%            v_n_eb(2,i)*sin(Lb)/((RE(i)+hb)*cos(Lb)^2), 0, v_n_eb(2,i)/(RE(i)+hb)^2/cos(Lb);
+%            0, 0, 0];
+%     
+%     zr3 = zeros(3,3);
+%     F = [F11, F12, F13, zr3, C_n_b(:,:,i+1);
+%          F21, F22, F23, C_n_b(:,:,i+1), zr3;
+%          zr3, F32, F33, zr3, zr3;
+%          zr3, zr3, zr3, zr3, zr3;
+%          zr3, zr3, zr3, zr3, zr3];
+%     A = eye(15) + F*dt;
+% 
+%     Q = zeros(15,15);
+%     Q(1:3,1:3) = eye(3)*1e-2;
+%     Q(4:6,4:6) = eye(3)*3e-3;
+%     Q(10:12,10:12) = eye(3)*1e-2;
+%     Q(13:15,13:15) = eye(3)*1e-3;
+%     
+%     R = 100*eye(3);%diag([3/Earth_R_long, 3/Earth_R_long, 20]); %선정 어뜨케 하지 크게(10000000000*eye(3)) 잡으면 잘된다?
+%     Sp = diag([1e3, 1e3, 1e0])*1e3; %Sp 크게 만들면 정확도가 개선되는데 뭥미?
+%     
+% %     %ZUPT
+% %     H = [zr3, -eye(3), zr3, zr3, zr3]; % 
+% %     dz = -v_n_eb(:,i+1);
+%     
 %     %CUPT
-%     H = [zr3, zr3, -eye(3), zr3, zr3]; % 
-%     z = -(P(:,i+1) - init_P');    
-    
-    %GPS
-    GPS_sd = [3/Earth_R_long, 3/Earth_R_long, 20]'/5; %3m, 3m, 20m 오차
-    GPS_P = inv_P(:,i+1) - [0,0,R_surface(Earth_R_long, Earth_R_short, inv_P(1,i+1))]';% + GPS_sd.*randn(3,1);
-    H = [zr3, zr3, -eye(3), zr3, zr3]; % 
-    z = -(P(:,i+1) - GPS_P);
-    GG(:,i) = GPS_P;
-    
-    
-    xp = A*x_k;
-    Pp = A*P_k*A' + Q;
-    K = Pp*H'/(H*Pp*H' + R);
-    x_k1 = xp + K*(z - H*xp);
-    P_k1 = Pp - K*H*Pp;
-    
-    P_k = P_k1;
-    x_k = x_k1;
-    
-    C_n_b(:,:,i+1) = (eye(3) - angularV2M(x_k(1:3)))*C_n_b(:,:,i+1);
-    v_n_eb(:,i+1) = v_n_eb(:,i+1) - x_k(4:6);
-    P(:,i+1) = P(:,i+1) - x_k(7:9);
-    
-    qC(:,:,i+1) = C_n_b(:,:,i+1);
-    q(:,i+1) = dcm2quat(qC(:,:,i+1))';
-    %추가
-    
-    V_n(:,i+1) = v_n_eb(:,i+1);
-
-    KK(:,:,i) = K;
-    zz(:,i) = z;
-    sx_k(:,i) = x_k;
+%     H = [zr3, zr3, -Sp, zr3, zr3]; % 
+%     dz = Sp*(init_P' - P(:,i+1));    
+%     
+% %     %GPS
+% %     GPS_sd = [3/Earth_R_long, 3/Earth_R_long, 20]'/5; %3m, 3m, 20m 오차, 정확하게는 그 위도에서 반지름으로 나눠야
+% %     GPS_P = inv_P(:,i+1) + GPS_sd.*randn(3,1);
+% %     H = [zr3, zr3, -Sp, zr3, zr3]; % 
+% %     dz = -Sp*(P(:,i) - GPS_P);
+% %     GG(:,i) = GPS_P;
+% %     
+%     
+%     xp = A*x_k;
+%     Pp = A*P_k*A' + Q;
+%     K = Pp*H'/(H*Pp*H' + R);
+%     x_k1 = xp + K*(dz - H*xp);
+%     P_k1 = Pp - K*H*Pp;
+%     
+%     P_k = P_k1;
+%     x_k = x_k1;
+%     
+%     C_n_b(:,:,i+1) = (eye(3) - angularV2M(x_k(1:3)))*C_n_b(:,:,i+1);
+%     v_n_eb(:,i+1) = v_n_eb(:,i+1) - x_k(4:6);
+%     P(:,i+1) = P(:,i+1) - x_k(7:9);
+%     
+%     qC(:,:,i+1) = C_n_b(:,:,i+1);
+%     q(:,i+1) = dcm2quat(qC(:,:,i+1))';
+%     %추가
+%     
+%     V_n(:,i+1) = v_n_eb(:,i+1);
+% 
+%     KK(:,:,i) = K;
+%     zz(:,i) = dz;
+%     sx_k(:,i) = x_k;
+%     PPP(:,:,i) = P_k;
 end
 
 surfR = R_surface(Earth_R_long, Earth_R_short, P(1,1:end-1));
@@ -190,7 +194,7 @@ hold on;
 plot(P(2,1:end-1)*180/pi)
 subplot(3,1,3);
 hold on;
-plot(P(3,1:end-1)+surfR)
+plot(P(3,1:end-1))
 
 figure(2);
 %surf(ex, ey, ez);
@@ -199,7 +203,7 @@ hold on;
 plot3(surfR.*cos(P(1,1:end-1)).*cos(P(2,1:end-1)), surfR.*cos(P(1,1:end-1)).*sin(P(2,1:end-1)), surfR.*sin(P(1,1:end-1)), 'LineWidth', 2, 'Marker', '.');
 figure(3);
 hold on;
-plot(P(1,1:end-1)*180/pi,P(2,1:end-1)*180/pi);
+plot(P(1,1:end-1)*180/pi,P(2,1:end-1)*180/pi, '.');
 % 
 % figure();
 % attitude_visualize(qC,qC);

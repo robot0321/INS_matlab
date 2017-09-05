@@ -11,19 +11,19 @@ flattening_f = (Earth_R_long - Earth_R_short)/Earth_R_long;
 eccentricity_e = sqrt(flattening_f*(2-flattening_f));
 GM = 398600.4418*1000^3;
 [ex, ey, ez] = ellipsoid(0,0,0,Earth_R_long,Earth_R_long,Earth_R_short,20);
-
+e = 0.0818191908425;
 
 %정지 (동체 회전)
-init_P = [36.0*pi/180, 127.0*pi/180, R_surface(Earth_R_long, Earth_R_short, 36*pi/180)];
+init_P = [36.0*pi/180, 127.0*pi/180, 0];
 init_C_n_b = [1, 0, 0; 0, 1, 0; 0, 0, 1];
 init_q = [1;0;0;0];
 Ns = 20000;
 P1 = init_P(1)*ones(1,Ns);
 P1(2,:) = init_P(2)*ones(1,Ns);
 P1(3,:) = init_P(3)*ones(1,Ns);
-C_n_b(:,:,1) = init_C_n_b;
-qC(:,:,1) = init_C_n_b;
-q(:,1)=init_q;
+C_n_b(:,:,1) = double(init_C_n_b);
+qC(:,:,1) = double(init_C_n_b);
+q(:,1) = double(init_q);
 w_b_nb = [0, 0, 10]'*ones(1,size(P1,2));
 %omega = [0, -w_nb(3), w_nb(2); w_nb(3), 0, -w_nb(1); -w_nb(2), w_nb(1), 0];
 for i=1:size(P1,2)-1
@@ -89,15 +89,17 @@ r_mag = R_surface(Earth_R_long, Earth_R_short, P1(1,:));%*(1+tan(wr)^2);
 %% 역 연산
 %R_surface(Earth_R_long, Earth_R_short, P1(1,:));%sqrt((1+tan(P1(1,:)).^2)./(Earth_R_short^2 + (Earth_R_long^2)*tan(P1(1,:)).^2))*Earth_R_short*Earth_R_long + P1(3,i);
 %R_vector = r_mag.*[cos(P1(1,:)).*cos(P1(2,:)); cos(P1(1,:)).*sin(P1(2,:)); sin(P1(1,:))]; %P1(3,:).*
-R_vector = [P1(3,1:end).*cos(P1(1,1:end)).*cos(P1(2,1:end)); P1(3,1:end).*cos(P1(1,1:end)).*sin(P1(2,1:end)); P1(3,1:end).*sin(P1(1,1:end))];
-%g = GM*1./r_mag.^2;
+surf_r = R_surface(Earth_R_long, Earth_R_short, P1(1,:)) + P1(3,:);
+r = [surf_r.*cos(P1(1,:)).*cos(P1(2,:)); surf_r.*cos(P1(1,:)).*sin(P1(2,:)); surf_r.*sin(P1(1,:))];%g = GM*1./r_mag.^2;
 g0 = 9.780318 * (1 + 5.3024e-3 .* sin(P1(1,:)).*sin(P1(1,:)) - 5.9e-6 .* sin(2*P1(1,:)) .* sin(2*P1(1,:)));
-g = g0./(1+(P1(3,:)-Earth_R_long)/Earth_R_long);
+g = g0./(1+P1(3,:)/Earth_R_long);
 w_n_ie = [Earth_Omega*cos(P1(1,:)); zeros(size(P1(1,:))); -Earth_Omega*sin(P1(1,:))];
-g_n_l = [zeros(size(g)); zeros(size(g)); g] - cross(w_n_ie, cross(w_n_ie, R_vector)); %애초에 중력을 일케 쓰면 무조건 로컬
+g_n_l = [zeros(size(g)); zeros(size(g)); g] - cross(w_n_ie, cross(w_n_ie, r)); %애초에 중력을 일케 쓰면 무조건 로컬
 
-delta_L=zeros(1,size(P1,2));delta_l=zeros(1,size(P1,2));delta_h=zeros(1,size(P1,2));
+delta_L=zeros(1,size(P1,2));delta_l=zeros(1,size(P1,2));delta_h=zeros(1,size(P1,2));RE=zeros(1,size(P1,2));RN=zeros(1,size(P1,2));
 for i=1:size(P1,2)-1
+    RE(i) = Earth_R_long/sqrt(1-(e*sin(P1(1,i)))^2);
+    RN(i) = Earth_R_long*(1-e^2)/(1-(e*sin(P1(1,i)))^2)^(3/2);
     delta_L(i) = (P1(1,i+1) - P1(1,i))/dt; 
     delta_l(i) = (P1(2,i+1) - P1(2,i))/dt; 
     delta_h(i) = (P1(3,i+1) - P1(3,i))/dt; 
@@ -123,8 +125,8 @@ end
 % end
 w_b_ib = w_b_in + w_b_nb; %자이로 센서 데이터
 
-V_N = delta_L.*(P1(3,:));
-V_E = delta_l.*(P1(3,:)).*cos(P1(1,:));
+V_N = delta_L.*(P1(3,:)+RN);
+V_E = delta_l.*(P1(3,:)+RE).*cos(P1(1,:));
 V_D = -delta_h;
 V_n = [V_N; V_E; V_D];
 init_V_n = V_n(:,1);
